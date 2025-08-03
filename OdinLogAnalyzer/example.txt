@@ -1,0 +1,21 @@
+This is a sample text file for testing the Odin Text Analysis Tool.
+
+The tool should be able to:
+- Display text with word wrap
+- Show line numbers
+- Handle scrolling
+- Support find functionality
+- Apply filters
+
+This is a longer line that should demonstrate word wrapping functionality when the text exceeds the width of the display area. The word wrap feature should break this line appropriately at word boundaries. This line contains many words and should wrap naturally at word boundaries when the text area width is exceeded. This is a longer line that should demonstrate word wrapping functionality when the text exceeds the width of the display area. The word wrap feature should break this line appropriately at word boundaries. This line contains many words and should wrap naturally at word boundaries when the text area width is exceeded. This is a longer line that should demonstrate word wrapping functionality when the text exceeds the width of the display area. The word wrap feature should break this line appropriately at word boundaries. This line contains many words and should wrap naturally at word boundaries when the text area width is exceeded.
+
+Here are some test patterns:
+ERROR: This line contains an error message
+WARNING: This line contains a warning message
+INFO: This line contains an information message
+DEBUG: This line contains a debug message
+
+The tool should be able to filter lines based on these patterns.
+For example, you could filter to show only ERROR lines, or exclude DEBUG lines.
+
+This demonstrates the basic functionality described in the appPlan.txt file.

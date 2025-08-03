@@ -1,0 +1,264 @@
+Key Points
+	• It seems likely that implementing a text analysis tool like TextAnalysisTool.NET in Odin with raylib and raygui is feasible, with word wrap as an added feature and cross-platform support due to Odin's and raylib's capabilities.
+	• Research suggests splitting the implementation into phases, starting with basic UI, file handling, and text display, then adding advanced features like filters and find functions.
+	• The evidence leans toward using Odin's standard library for file I/O and text processing, with raygui for the menu and raylib for rendering, ensuring cross-platform compatibility.
+File Reading and ChunkingFor file reading, start by loading small files into memory with os.read_entire_file and split into lines using strings.split. For large files, use core:bufio for chunked reading, reading lines on demand to manage memory, especially for virtual scrolling.Menu and Text Area RenderingSplit menu rendering (raygui buttons, toggles) from text area rendering (raylib text drawing) for modularity. Use separate procedures in the main loop, passing a shared State struct for data.Virtual ScrollingVirtual scrolling renders only visible lines based on scroll_offset, calculated from text area height and line height, using rl.BeginScissorMode for clipping and rl.GetMouseWheelMove for input.Word Wrap and Line NumbersImplement word wrap by splitting lines into words and rendering within text area width, using rl.MeasureText. Toggle line numbers via menu, showing them only for the first wrapped line of each logical line, with appropriate indentation.Cross-Platform ConsiderationsOdin and raylib ensure cross-platform compatibility (Windows, Linux, macOS). Test on all platforms to ensure features work, leveraging Odin's and raylib's inherent support.
+
+Comprehensive Plan for Implementing a Cross-Platform Text Analysis Tool in Odin Using raylib and rayguiThis document outlines a detailed plan for developing a cross-platform text analysis tool in Odin using raylib and raygui. The tool will replicate the functionality of TextAnalysisTool.NET (as described in the provided URLs) while adding word wrap and ensuring cross-platform compatibility. The plan is designed for a junior developer and includes clear steps, implementation details, and considerations for each feature. It is structured to be shared with a project manager (PM) for task breakdown and progress tracking, as of 11:47 PM WEST on Friday, August 1, 2025.
+
+Background and Context
+	• TextAnalysisTool.NET Overview:
+		○ A tool for viewing, searching, and navigating large files efficiently.
+		○ Supports file encodings like ANSI, UTF-8, Unicode, and big-endian Unicode.
+		○ Features include:
+			§ User-defined filters (include/exclude lines based on sub-strings, markers, or regex).
+			§ Marker types for line marking and navigation.
+			§ Flexible find function (literal strings or regex).
+			§ Import methods: open file, drag-and-drop, paste from clipboard.
+			§ Export/sharing: copy lines to clipboard, save current lines to a file.
+			§ Additional features: save/load filter sets, history for find/filter dialogs.
+		○ Reference URLs:
+	https://textanalysistool.github.io/
+	https://textanalysistool.github.io/ReadMe.txt
+	https://textanalysistool.github.io/TextAnalysisTool.NET.txt
+	https://dlaa.me/blog/post/3450647
+	• Odin with raylib and raygui:
+		○ Odin is a systems programming language with strong performance and cross-platform support.
+		○ raylib provides graphics and input handling; raygui offers immediate-mode GUI elements.
+		○ The tool must be cross-platform (Windows, Linux, macOS) due to Odin and raylib's inherent support.
+	• Additional Requirements:
+		○ Add word wrap as an extra feature.
+		○ Ensure efficient handling of large files (virtual scrolling).
+		○ Support cross-platform compatibility.
+
+Key Features to Implement
+	1. File Handling:
+		○ Support for different encodings (start with UTF-8; add others later).
+		○ Efficient handling of large files (chunked reading).
+	2. Text Display:
+		○ Large text area with virtual scrolling.
+		○ Word wrap (enabled/disabled via menu).
+		○ Line numbers (enabled/disabled via menu).
+	3. Filters:
+		○ User-defined filters (include/exclude lines based on sub-strings, regex).
+		○ Marker types for line marking and navigation.
+	4. Find Function:
+		○ Search for literal strings or regex across the file.
+	5. Import/Export:
+		○ Open file (initially hardcoded; later add file dialog).
+		○ Drag-and-drop (optional; complex with raylib).
+		○ Paste from clipboard.
+		○ Copy lines to clipboard.
+		○ Save current lines to a file.
+	6. Additional Features:
+		○ Save and load filter sets.
+		○ History for find and filter dialogs.
+	7. Cross-Platform:
+		○ Leverage Odin and raylib's cross-platform capabilities.
+		○ Test on Windows, Linux, and macOS.
+
+Implementation PlanPhase 1: Setup and Basic UI
+	• Task 1.1: Project Setup
+		○ Create a new Odin project.
+		○ Import raylib and raygui from Odin's vendor directory.
+		○ Initialize raylib window (e.g., rl.InitWindow(800, 600, "Text Analysis Tool")).
+		○ Set up the main loop with rl.BeginDrawing, rl.ClearBackground, and rl.EndDrawing.
+	• Task 1.2: UI Layout
+		○ Create a menu bar using raygui with buttons:
+			§ "Open" (initially loads a hardcoded file like "example.txt").
+			§ "Save" (saves current text to file).
+			§ "Find" (opens a find dialog).
+			§ Toggles for "Word Wrap" and "Show Line Numbers".
+		○ Define a large rectangle for the text area (e.g., rl.Rectangle{10, 50, 780, 500}).
+	• Task 1.3: State Management
+		○ Define a State struct to hold application data:
+odin
+
+State :: struct {
+    logical_lines: [dynamic]string,
+    display_lines: [dynamic]DisplayLine,
+    scroll_offset: f32,
+    word_wrap: bool,
+    show_line_numbers: bool,
+    needs_redraw_display_lines: bool,
+    // Add more as needed (e.g., filters, find history)
+}
+DisplayLine :: struct {
+    logical_line_index: int,
+    is_first_of_logical: bool,
+    text: string,
+}
+Phase 2: File Handling and Text Display
+	• Task 2.1: File Reading
+		○ Implement load_file to read a file into memory:
+			§ Use os.read_entire_file for small files.
+			§ Split into logical lines using strings.split(file_content, '\n').
+			§ Store in state.logical_lines.
+		○ For large files, consider chunked reading with core:bufio later.
+		○ Research suggests using core:bufio for efficiency, reading lines on demand with procedures like bufio.reader_read_string.
+	• Task 2.2: Word Wrap and Display Lines
+		○ Implement generate_display_lines:
+			§ If word_wrap is true, split each logical line into wrapped lines using a word wrap function.
+			§ If word_wrap is false, use logical lines as display lines.
+			§ Each display line includes logical_line_index and is_first_of_logical for line number rendering.
+		○ Example:
+odin
+
+generate_display_lines :: proc(logical_lines: []string, max_width: f32, font_size: i32, word_wrap: bool) -> [dynamic]DisplayLine {
+    display_lines := make([dynamic]DisplayLine)
+    for i, line in logical_lines {
+        if !word_wrap {
+            append(&display_lines, DisplayLine{logical_line_index = i, is_first_of_logical = true, text = line})
+        } else {
+            wrapped := generate_wrapped_for_line(line, max_width, font_size)
+            for j, wrapped_text in wrapped {
+                is_first := (j == 0)
+                append(&display_lines, DisplayLine{logical_line_index = i, is_first_of_logical = is_first, text = wrapped_text})
+            }
+        }
+    }
+    return display_lines
+}
+generate_wrapped_for_line :: proc(line: string, max_width: f32, font_size: i32) -> [dynamic]string {
+    wrapped := make([dynamic]string)
+    words := strings.fields(line)
+    current_line := ""
+    for _, word in words {
+        test_line := current_line
+        if len(test_line) > 0 {
+            test_line += " "
+        }
+        test_line += word
+        if f32(rl.MeasureText(test_line, font_size)) > max_width {
+            if len(current_line) > 0 {
+                append(&wrapped, current_line)
+                current_line = word
+            } else {
+                append(&wrapped, word)
+                current_line = ""
+            }
+        } else {
+            if len(current_line) > 0 {
+                current_line += " " + word
+            } else {
+                current_line = word
+            }
+        }
+    }
+    if len(current_line) > 0 {
+        append(&wrapped, current_line)
+    }
+    return wrapped
+}
+	• Task 2.3: Text Rendering
+		○ Implement render_text_area:
+			§ Calculate visible lines based on scroll_offset and text area height.
+			§ For each visible display_line:
+				□ If show_line_numbers and is_first_of_logical, draw the line number at text_area.x.
+				□ Draw the text at text_start_x (adjusted for line numbers).
+			§ Use rl.BeginScissorMode to clip rendering to the text area.
+		○ Example:
+odin
+
+render_text_area :: proc(state: ^State, text_area: rl.Rectangle, font_size: i32) {
+    line_height := f32(font_size)
+    first_visible_line := int(state.scroll_offset / line_height)
+    visible_lines := int(text_area.height / line_height) + 1
+    end_line := min(first_visible_line + visible_lines, len(state.display_lines))
+
+text_start_x := text_area.x
+    if state.show_line_numbers {
+        max_line_num_width := rl.MeasureText(fmt.tprintf("%d: ", len(state.logical_lines)), font_size)
+        text_start_x = text_area.x + f32(max_line_num_width)
+    }
+
+rl.BeginScissorMode(i32(text_area.x), i32(text_area.y), i32(text_area.width), i32(text_area.height))
+    defer rl.EndScissorMode()
+
+for i := first_visible_line; i < end_line; i += 1 {
+        display_line := state.display_lines[i]
+        y := text_area.y + f32(i - first_visible_line) * line_height - (state.scroll_offset - f32(first_visible_line) * line_height)
+        if state.show_line_numbers && display_line.is_first_of_logical {
+            line_num_str := fmt.tprintf("%d: ", display_line.logical_line_index + 1)
+            rl.DrawText(line_num_str, i32(text_area.x), i32(y), font_size, rl.GRAY)
+        }
+        rl.DrawText(display_line.text, i32(text_start_x), i32(y), font_size, rl.BLACK)
+    }
+}
+	• Task 2.4: Scrolling
+		○ Handle mouse wheel input with rl.GetMouseWheelMove.
+		○ Update scroll_offset and clamp it to valid range.
+		○ Example:
+odin
+
+wheel := rl.GetMouseWheelMove()
+state.scroll_offset -= f32(wheel) * line_height
+max_scroll := f32(len(state.display_lines)) * line_height - text_area.height
+state.scroll_offset = max(0, min(state.scroll_offset, max_scroll))
+Phase 3: Advanced Features
+	• Task 3.1: Filters
+		○ Define a Filter struct (e.g., type: include/exclude, pattern: string/regex).
+		○ Implement filter application:
+			§ Generate a filtered list of display lines based on user-defined filters.
+			§ Allow saving and loading filter sets.
+	• Task 3.2: Find Function
+		○ Implement a find dialog (using raygui or custom UI).
+		○ Search for literal strings or regex in logical lines.
+		○ Highlight matches (e.g., by changing text color).
+	• Task 3.3: Markers
+		○ Allow users to mark lines (e.g., with different colors or symbols).
+		○ Implement navigation between marked lines.
+	• Task 3.4: Import/Export
+		○ Add clipboard support (e.g., copy selected lines).
+		○ Implement save functionality (write current text to file).
+	• Task 3.5: File Dialog
+		○ Integrate a file dialog library (e.g., tinyfiledialogs via C bindings).
+		○ Alternatively, implement a simple file browser within the app.
+Phase 4: Optimization and Polish
+	• Task 4.1: Large File Handling
+		○ Use core:bufio for chunked reading of large files.
+		○ Implement virtual scrolling by loading only visible lines.
+		○ Research suggests using bufio.Reader for efficiency, reading lines on demand with bufio.reader_read_string.
+	• Task 4.2: Cross-Platform Testing
+		○ Test on Windows, Linux, and macOS.
+		○ Ensure all features work across platforms.
+	• Task 4.3: UI Enhancements
+		○ Add keyboard shortcuts (e.g., Ctrl+F for find).
+		○ Improve menu bar aesthetics with raygui styling.
+	• Task 4.4: Documentation and Error Handling
+		○ Add error handling for file operations.
+		○ Document code for maintainability.
+
+Implementation List for PM
+Phase	Task Description	Estimated Effort	Dependencies
+Setup	Create Odin project, import raylib/raygui, initialize window and main loop	2 hours	Odin installation
+UI Design	Design menu bar with buttons, toggles; define text area rectangle	4 hours	Setup complete
+State Management	Implement State struct, initialize in main	2 hours	UI Design
+File Handling	Implement file loading with os.read_entire_file, store logical lines	3 hours	State Management
+Text Rendering	Implement display lines generation, rendering with scrolling and line numbers	6 hours	File Handling
+Scrolling	Handle mouse wheel scrolling, clamp scroll offset	2 hours	Text Rendering
+Filters	Implement filter struct, apply filters to display lines	5 hours	Text Rendering
+Find Function	Implement find dialog and search functionality	4 hours	Text Rendering
+Markers	Add line marking and navigation between marked lines	3 hours	Text Rendering
+Import/Export	Add clipboard copy, save functionality	3 hours	File Handling
+File Dialog	Integrate file dialog (or simple file browser)	4 hours	File Handling
+Large Files	Optimize for large files with chunked reading and virtual scrolling	5 hours	File Handling
+Cross-Platform	Test on Windows, Linux, macOS; fix platform-specific issues	3 hours	All features implemented
+UI Polish	Add keyboard shortcuts, improve menu styling	2 hours	UI Design
+Documentation	Add error handling, document code	2 hours	All features implemented
+
+Additional Notes
+	• Word Wrap:
+		○ Implemented as part of generate_display_lines.
+		○ Uses rl.MeasureText to calculate line widths.
+	• Cross-Platform:
+		○ Odin and raylib ensure cross-platform compatibility.
+		○ Test on all target platforms during Phase 4.
+	• Large Files:
+		○ Start with in-memory loading; optimize later with core:bufio.
+	• File Dialog:
+		○ Initially use hardcoded file paths; add file dialog later.
+	• Testing:
+		○ Use small and large test files to validate functionality.
+		○ Test edge cases (e.g., very long lines, empty files).
+This plan provides a clear roadmap for implementing the text analysis tool in Odin with raylib and raygui. It ensures all features of TextAnalysisTool.NET are covered while adding word wrap and cross-platform support. The junior developer can follow this step-by-step guide, and the PM can use the implementation list for tracking progress.
